@@ -1,6 +1,4 @@
-/* comentarios sin tildes */
-
-// utilidades UI
+// agrega las variables y operadores en la caja de texto
 function insertAtCursor(contentEditable, text){
   contentEditable.focus();
   const sel = window.getSelection();
@@ -64,8 +62,8 @@ confirmAddVar.addEventListener('click', (e)=>{
   }
 });
 
-// parser + AST
-// tokenization
+
+// tokenization, Lee la expresion para convertirla en tokens validos
 function tokenize(input){
   const tokens = [];
   let i=0;
@@ -94,7 +92,7 @@ function tokenize(input){
   return tokens;
 }
 
-// AST node constructors
+// constructor de arbol de expresiones
 function ConstNode(v){ return {type:'CONST', value:!!v}; }
 function VarNode(name){ return {type:'VAR', name}; }
 function NotNode(child){ return {type:'NOT', child}; }
@@ -102,7 +100,7 @@ function AndNode(children){ return {type:'AND', children}; }
 function OrNode(children){ return {type:'OR', children}; }
 function XorNode(left,right){ return {type:'XOR', left, right}; }
 
-// recursive descent parser
+// lee recursivamente los tokens y normaliza la expresion
 function parse(input){
   const tokens = Array.isArray(input) ? input : tokenize(input);
   let pos = 0;
@@ -142,7 +140,7 @@ function parse(input){
   return ast;
 }
 
-// toString from AST
+// reconstruye la expresion en una cadena 
 function toString(node){
   const prec = { OR:1, XOR:2, AND:3, NOT:4, VAR:5, CONST:5 };
   function wrap(child, parentType){
@@ -211,7 +209,8 @@ function canonicalStr(n){
   }
 }
 
-// rules engine: applies one-step transformations and logs rule
+// es la que realiza la simplificacion aplicando las leyes booleanas y guardando los pasos en una 
+// lista para luego mostrarlos
 function simplify(ast){
   const steps = [];
   function pushStep(before, after, rule){
@@ -223,7 +222,7 @@ function simplify(ast){
     return after;
   }
 
-  // utility functions for sets of children
+  
   function uniqueByCanonical(arr){
     const seen = new Set();
     const out = [];
@@ -431,7 +430,7 @@ function simplify(ast){
   return {node: current, steps};
 }
 
-// UI simplify handler
+
 let lastResult = null;
 btnSimplify.addEventListener('click', () => {
   const raw = exprDisplay.textContent.trim();
@@ -457,7 +456,7 @@ btnSimplify.addEventListener('click', () => {
     alert('Error: ' + err.message);
   }
 });
-
+// esta funcion se encarga de mostrar los pasos que se aplicaron para simplificar la expresion  
 function renderSteps(steps){
   stepsEl.innerHTML = '';
   if (!steps.length){
