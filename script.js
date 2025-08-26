@@ -39,7 +39,7 @@ btnClear.addEventListener('click', () => {
   status('Expresion limpia.');
 });
 
-// tokenization, Lee la expresion para convertirla en tokens validos
+// tokenizacion, Lee la expresion para convertirla en tokens validos
 function tokenize(input){
   const tokens = [];
   let i=0;
@@ -74,7 +74,7 @@ function NotNode(child){ return {type:'NOT', child}; }
 function AndNode(children){ return {type:'AND', children}; }
 function OrNode(children){ return {type:'OR', children}; }
 
-// lee recursivamente los tokens y normaliza la expresion
+// lee recursivamente los tokens ingresados a la lista (normaliza, o convierte la expresion a un arbol)
 function parse(input){
   const tokens = Array.isArray(input) ? input : tokenize(input);
   let pos = 0;
@@ -176,9 +176,9 @@ function canonicalStr(n){
 
 // es la que realiza la simplificacion aplicando las leyes booleanas y guardando los pasos en una 
 // lista para luego mostrarlos
-function simplify(ast){
+function simplificar(ast){
   const steps = [];
-  function pushStep(before, after, rule){
+  function pushPaso(before, after, rule){
     const sBefore = toString(before);
     const sAfter = toString(after);
     if (sBefore !== sAfter){
@@ -239,45 +239,45 @@ function simplify(ast){
       case 'NOT': {
         const c = step(node.child);
         // doble negacion: ~~X = X
-        if (c.type === 'NOT'){ return pushStep(node, c.child, 'Doble negacion'); }
+        if (c.type === 'NOT'){ return pushPaso(node, c.child, 'Doble negacion'); }
         // De Morgan: ~(A & B) = ~A | ~B
         if (c.type === 'AND'){
           const mapped = c.children.map(x => NotNode(x));
           const res = OrNode(mapped);
-          return pushStep(node, res, 'De Morgan');
+          return pushPaso(node, res, 'De Morgan');
         }
         // De Morgan: ~(A | B) = ~A & ~B
         if (c.type === 'OR'){
           const mapped = c.children.map(x => NotNode(x));
           const res = AndNode(mapped);
-          return pushStep(node, res, 'De Morgan');
+          return pushPaso(node, res, 'De Morgan');
         }
         // complement constants
         if (c.type === 'CONST'){
           const res = ConstNode(!c.value);
-          return pushStep(node, res, 'Complemento constante');
+          return pushPaso(node, res, 'Complemento constante');
         }
         return NotNode(c);
       }
       case 'AND': {
         const children = node.children.map(step);
         const before = AndNode(children);
-        // identity: X & 1 = X (remove 1)
+        // identidad: X & 1 = X
         if (children.some(c => c.type==='CONST' && c.value===true)){
           const filtered = children.filter(c => !(c.type==='CONST' && c.value===true));
           const res = filtered.length===0 ? ConstNode(true) : (filtered.length===1 ? filtered[0] : AndNode(filtered));
-          return pushStep(before, res, 'Identidad AND');
+          return pushPaso(before, res, 'Identidad AND');
         }
-        // annul: X & 0 = 0
+        // anulacion: X & 0 = 0
         if (children.some(c => c.type==='CONST' && c.value===false)){
-          return pushStep(before, ConstNode(false), 'Anulacion AND');
+          return pushPaso(before, ConstNode(false), 'Anulacion AND');
         }
         // idempotencia: remove duplicates
         let uniq = uniqueByCanonical(children);
-        if (uniq.length !== children.length) return pushStep(before, AndNode(uniq), 'Idempotencia AND');
+        if (uniq.length !== children.length) return pushPaso(before, AndNode(uniq), 'Idempotencia AND');
         // complemento: X & ~X = 0
         for(const c of uniq){
-          if (containsNegation(uniq, c)) return pushStep(before, ConstNode(false), 'Complemento AND');
+          if (containsNegation(uniq, c)) return pushPaso(before, ConstNode(false), 'Complemento AND');
         }
         // absorcion: X & (X | Y) = X
         for(let i=0;i<uniq.length;i++){
@@ -285,7 +285,7 @@ function simplify(ast){
             if (i===j) continue;
             const a = uniq[i], b = uniq[j];
             if (b.type==='OR' && b.children.some(ch => toString(ch)===toString(a))){
-              return pushStep(before, a, 'Absorcion AND');
+              return pushPaso(before, a, 'Absorcion AND');
             }
           }
         }
@@ -304,7 +304,7 @@ function simplify(ast){
                   const andPartChildren = [...rest1, ...rest2, ...other].filter(x=> x);
                   const andPart = andPartChildren.length===0? ConstNode(true) : (andPartChildren.length===1? andPartChildren[0] : AndNode(andPartChildren));
                   const res = OrNode([lit1, andPart]);
-                  return pushStep(before, res, 'Distributiva (factor comun) AND');
+                  return pushPaso(before, res, 'Distributiva (factor comun) AND');
                 }
               }
             }
@@ -319,18 +319,18 @@ function simplify(ast){
         if (children.some(c => c.type==='CONST' && c.value===false)){
           const filtered = children.filter(c => !(c.type==='CONST' && c.value===false));
           const res = filtered.length===0 ? ConstNode(false) : (filtered.length===1 ? filtered[0] : OrNode(filtered));
-          return pushStep(before, res, 'Identidad OR');
+          return pushPaso(before, res, 'Identidad OR');
         }
         // annul: X | 1 = 1
         if (children.some(c => c.type==='CONST' && c.value===true)){
-          return pushStep(before, ConstNode(true), 'Anulacion OR');
+          return pushPaso(before, ConstNode(true), 'Anulacion OR');
         }
         // idempotencia: remove duplicates
         let uniq = uniqueByCanonical(children);
-        if (uniq.length !== children.length) return pushStep(before, OrNode(uniq), 'Idempotencia OR');
+        if (uniq.length !== children.length) return pushPaso(before, OrNode(uniq), 'Idempotencia OR');
         // complemento: X | ~X = 1
         for(const c of uniq){
-          if (containsNegation(uniq, c)) return pushStep(before, ConstNode(true), 'Complemento OR');
+          if (containsNegation(uniq, c)) return pushPaso(before, ConstNode(true), 'Complemento OR');
         }
         // absorcion: X | (X & Y) = X
         for(let i=0;i<uniq.length;i++){
@@ -338,7 +338,7 @@ function simplify(ast){
             if (i===j) continue;
             const a = uniq[i], b = uniq[j];
             if (b.type==='AND' && b.children.some(ch => toString(ch)===toString(a))){
-              return pushStep(before, a, 'Absorcion OR');
+              return pushPaso(before, a, 'Absorcion OR');
             }
           }
         }
@@ -356,7 +356,7 @@ function simplify(ast){
                   const orPartChildren = [...rest1, ...rest2, ...other].filter(x=> x);
                   const orPart = orPartChildren.length===0? ConstNode(false) : (orPartChildren.length===1? orPartChildren[0] : OrNode(orPartChildren));
                   const res = AndNode([lit1, orPart]);
-                  return pushStep(before, res, 'Distributiva (factor comun) OR');
+                  return pushPaso(before, res, 'Distributiva (factor comun) OR');
                 }
               }
             }
@@ -392,7 +392,7 @@ btnSimplify.addEventListener('click', () => {
   try{
     const normalized = raw.replace(/Â·/g,'&').replace(/\s+/g,' ').trim();
     const ast = parse(normalized);
-    const out = simplify(ast);
+    const out = simplificar(ast);
     const text = toString(out.node);
     resultEl.textContent = text;
     renderSteps(out.steps);
