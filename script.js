@@ -1,3 +1,5 @@
+/* comentarios sin tildes */
+
 // utilidades UI
 function insertAtCursor(contentEditable, text){
   contentEditable.focus();
@@ -162,13 +164,6 @@ function toString(node){
     case 'CONST': return node.value ? '1' : '0';
     case 'NOT':
       if (node.child.type==='VAR' || node.child.type==='CONST' || node.child.type==='NOT') return '~' + toString(node.child);
-
-      if (c.type === 'CONST') {
-      const res = ConstNode(!c.value);
-      const regla = c.value ? 'NOT 1 = 0' : 'NOT 0 = 1';
-      return pushStep(node, res, regla);
-      }
-      
       return '~(' + toString(node.child) + ')';
     case 'AND': return node.children.map(c=> precedence(c) < precedence({type:'AND'}) ? '('+toString(c)+')' : toString(c)).join(' & ');
     case 'OR': return node.children.map(c=> precedence(c) < precedence({type:'OR'}) ? '('+toString(c)+')' : toString(c)).join(' | ');
@@ -282,9 +277,7 @@ function simplify(ast){
       case 'NOT': {
         const c = step(node.child);
         // doble negacion: ~~X = X
-        if (c.type === 'NOT') {
-          return pushStep(node, c.child, 'Involución: ~~X = X');
-        }
+        if (c.type === 'NOT'){ return pushStep(node, c.child, 'Doble negacion'); }
         // De Morgan: ~(A & B) = ~A | ~B
         if (c.type === 'AND'){
           const mapped = c.children.map(x => NotNode(x));
@@ -378,23 +371,15 @@ function simplify(ast){
           if (containsNegation(uniq, c)) return pushStep(before, ConstNode(true), 'Complemento OR');
         }
         // absorcion: X | (X & Y) = X
-        // dentro de case 'OR':
-        for (let i=0; i<uniq.length; i++) {
-          for (let j=0; j<uniq.length; j++) {
-            if (i === j) continue;
+        for(let i=0;i<uniq.length;i++){
+          for(let j=0;j<uniq.length;j++){
+            if (i===j) continue;
             const a = uniq[i], b = uniq[j];
-            // caso: X | (~X & Y) = X | Y
-            if (b.type === 'AND') {
-              const neg = b.children.find(ch => ch.type === 'NOT' && toString(ch.child) === toString(a));
-              if (neg) {
-                const rest = b.children.filter(ch => ch !== neg);
-                const res = OrNode([a, ...rest]);
-                return pushStep(before, res, 'Consenso OR (X + X\'Y = X + Y)');
-              }
+            if (b.type==='AND' && b.children.some(ch => toString(ch)===toString(a))){
+              return pushStep(before, a, 'Absorcion OR');
             }
           }
         }
-        
         // distributiva simple: (A & B) | (A & C) = A & (B | C)
         const andIdx = uniq.map((c,idx)=>[c,idx]).filter(([c])=>c.type==='AND');
         if (andIdx.length >= 2){
@@ -488,8 +473,6 @@ function renderSteps(steps){
   }
 }
 
-
-
 // export JSON
 btnExport.addEventListener('click', ()=>{
   const payload = lastResult || { original: exprDisplay.textContent.trim()||null, normalized:null, simplified:null, steps:[] };
@@ -503,7 +486,7 @@ btnExport.addEventListener('click', ()=>{
   setTimeout(()=> URL.revokeObjectURL(a.href), 0);
 });
 
-// Funcion Demo inicial
+// initial demo content
 exprDisplay.textContent = '(A & B) | (A & ~B)';
 status('Listo');
 
