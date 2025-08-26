@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Simplificador Booleano - con pasos</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="app-header">
+  <h1>Simplificador de expresiones booleanas</h1>
+  <p class="subtitle">Usa botones o edita directamente. Se muestran las leyes aplicadas en cada paso.</p>
+</header>
+
+<main class="container">
+  <section class="display-card" aria-labelledby="exprLabel">
+    <label id="exprLabel" class="sr-only">Expresion</label>
+    <div id="exprDisplay" class="expr-display" contenteditable="true" spellcheck="false" aria-label="Expresion booleana"></div>
+
+    <div class="toolbar" role="toolbar" aria-label="Controles">
+      <button class="op" data-insert="(" title="Abrir parentesis">(</button>
+      <button class="op" data-insert=")" title="Cerrar parentesis">)</button>
+      <span class="divider"></span>
+      <button class="op" data-insert=" & " title="AND (y)">&</button>
+      <button class="op" data-insert=" | " title="OR (o)">|</button>
+      <button class="op" data-insert=" ^ " title="XOR">^</button>
+      <button class="op" data-insert=" ~" title="NOT (negacion)">~</button>
+      <span class="divider"></span>
+      <button id="btnAddVar" class="ghost">Agregar variable</button>
+      <button id="btnClear" class="ghost danger">Limpiar</button>
+    </div>
+
+    <div class="tips">
+      <details>
+        <summary>Ayuda rapida</summary>
+        <ul>
+          <li>Operadores: &amp; (AND), | (OR), ~ (NOT), ^ (XOR)</li>
+          <li>Constantes: 0 y 1</li>
+          <li>Usa botones para evitar errores; puedes editar texto tambien</li>
+        </ul>
+      </details>
+    </div>
+  </section>
+
+  <section class="actions-card">
+    <button id="btnSimplify" class="primary">Simplificar</button>
+    <button id="btnExport" class="secondary">Exportar JSON</button>
+    <div id="status" role="status" aria-live="polite" class="status">Listo</div>
+  </section>
+
+  <section class="results-grid">
+    <div class="panel">
+      <h2>Resultado</h2>
+      <pre id="result"></pre>
+    </div>
+    <div class="panel">
+      <h2>Pasos (ley aplicada : expresion antes => expresion despues)</h2>
+      <ol id="steps"></ol>
+    </div>
+  </section>
+</main>
+
+<footer class="app-footer">
+  <small>Diseñado, apra ayuda al estudiante...</small>
+</footer>
+
+<dialog id="varDialog">
+  <form method="dialog" id="varForm">
+    <h3>Nueva variable</h3>
+    <label for="varName">Nombre</label>
+    <input id="varName" name="varName" pattern="[A-Za-z][A-Za-z0-9_]*" required />
+    <menu>
+      <button value="cancel">Cancelar</button>
+      <button id="confirmAddVar" value="default">Agregar</button>
+    </menu>
+  </form>
+</dialog>
+
+<script src="script.js"></script>
+</body>
+</html>
