@@ -23,11 +23,7 @@ const resultEl = document.getElementById('result');
 const stepsEl = document.getElementById('steps');
 const btnSimplify = document.getElementById('btnSimplify');
 const btnExport = document.getElementById('btnExport');
-const btnAddVar = document.getElementById('btnAddVar');
 const btnClear = document.getElementById('btnClear');
-const varDialog = document.getElementById('varDialog');
-const varForm = document.getElementById('varForm');
-const confirmAddVar = document.getElementById('confirmAddVar');
 
 document.querySelectorAll('.op').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -43,26 +39,6 @@ btnClear.addEventListener('click', () => {
   status('Expresion limpia.');
 });
 
-btnAddVar.addEventListener('click', () => {
-  if (typeof varDialog.showModal === 'function') {
-    varDialog.showModal();
-    varForm.reset();
-    setTimeout(()=>document.getElementById('varName').focus(),0);
-  } else {
-    const n = prompt('Nombre de variable (A, B1, user):');
-    if (n) insertAtCursor(exprDisplay, ' ' + n + ' ');
-  }
-});
-confirmAddVar.addEventListener('click', (e)=>{
-  e.preventDefault();
-  const input = document.getElementById('varName');
-  if (input.reportValidity()){
-    insertAtCursor(exprDisplay, ' ' + input.value + ' ');
-    varDialog.close();
-  }
-});
-
-
 // tokenization, Lee la expresion para convertirla en tokens validos
 function tokenize(input){
   const tokens = [];
@@ -77,7 +53,6 @@ function tokenize(input){
     if (c===')'){ tokens.push({type:'RP', v:')'}); i++; continue; }
     if (c==='&' || c==='*' || c==='Â·'){ tokens.push({type:'AND', v:'&'}); i++; continue; }
     if (c==='|' || c==='+' || c.toLowerCase()==='v'){ tokens.push({type:'OR', v:'|'}); i++; continue; }
-    if (c==='^'){ tokens.push({type:'XOR', v:'^'}); i++; continue; }
     if (c==='~' || c==='!'){ tokens.push({type:'NOT', v:'~'}); i++; continue; }
     if (c==='0' || c==='1'){ tokens.push({type:'CONST', v: c==='1'}); i++; continue; }
     if (isLetter(c)){
@@ -98,7 +73,6 @@ function VarNode(name){ return {type:'VAR', name}; }
 function NotNode(child){ return {type:'NOT', child}; }
 function AndNode(children){ return {type:'AND', children}; }
 function OrNode(children){ return {type:'OR', children}; }
-function XorNode(left,right){ return {type:'XOR', left, right}; }
 
 // lee recursivamente los tokens y normaliza la expresion
 function parse(input){
@@ -109,13 +83,8 @@ function parse(input){
 
   function parseExpr(){ return parseOr(); }
   function parseOr(){
-    let node = parseXor();
-    while(peek().type === 'OR'){ eat('OR'); const right = parseXor(); node = OrNode(flattenOr(node, right)); }
-    return node;
-  }
-  function parseXor(){
     let node = parseAnd();
-    while(peek().type === 'XOR'){ eat('XOR'); const right = parseAnd(); node = XorNode(node, right); }
+    while(peek().type === 'OR'){ eat('OR'); const right = parseAnd(); node = OrNode(flattenOr(node, right)); }
     return node;
   }
   function parseAnd(){
@@ -142,7 +111,7 @@ function parse(input){
 
 // reconstruye la expresion en una cadena 
 function toString(node){
-  const prec = { OR:1, XOR:2, AND:3, NOT:4, VAR:5, CONST:5 };
+  const prec = { OR:1, AND:3, NOT:4, VAR:5, CONST:5 };
   function wrap(child, parentType){
     const need = precedence(child) < precedence(parentType);
     return need ? '(' + toString(child) + ')' : toString(child);
@@ -151,7 +120,6 @@ function toString(node){
     if (!n) return 0;
     switch(n.type){
       case 'OR': return 1;
-      case 'XOR': return 2;
       case 'AND': return 3;
       case 'NOT': return 4;
       case 'VAR': case 'CONST': return 5;
@@ -165,7 +133,6 @@ function toString(node){
       return '~(' + toString(node.child) + ')';
     case 'AND': return node.children.map(c=> precedence(c) < precedence({type:'AND'}) ? '('+toString(c)+')' : toString(c)).join(' & ');
     case 'OR': return node.children.map(c=> precedence(c) < precedence({type:'OR'}) ? '('+toString(c)+')' : toString(c)).join(' | ');
-    case 'XOR': return (precedence(node.left)<precedence({type:'XOR'})? '('+toString(node.left)+')':toString(node.left)) + ' ^ ' + (precedence(node.right)<precedence({type:'XOR'})? '('+toString(node.right)+')':toString(node.right));
   }
 }
 
@@ -191,7 +158,6 @@ function clone(node){
     case 'NOT': return NotNode(clone(node.child));
     case 'AND': return AndNode(node.children.map(clone));
     case 'OR': return OrNode(node.children.map(clone));
-    case 'XOR': return XorNode(clone(node.left), clone(node.right));
   }
 }
 
@@ -203,7 +169,6 @@ function canonicalStr(n){
     case 'OR':
       return 'OR(' + n.children.map(canonicalStr).sort().join(',') + ')';
     case 'NOT': return 'NOT(' + canonicalStr(n.child) + ')';
-    case 'XOR': return 'XOR(' + canonicalStr(n.left) + ',' + canonicalStr(n.right) + ')';
     case 'VAR': return 'VAR(' + n.name + ')';
     case 'CONST': return 'CONST(' + (n.value?1:0) + ')';
   }
@@ -263,8 +228,6 @@ function simplify(ast){
         ch = uniqueByCanonical(ch).sort((a,b)=> toString(a).localeCompare(toString(b)));
         return OrNode(ch);
       }
-      case 'XOR':
-        return XorNode(normalize(n.left), normalize(n.right));
     }
   }
 
@@ -401,19 +364,6 @@ function simplify(ast){
         }
         return before;
       }
-      case 'XOR': {
-        const l = step(node.left), r = step(node.right);
-        const before = XorNode(l,r);
-        // X ^ 0 = X
-        if (r.type==='CONST' && r.value===false) return pushStep(before, l, 'XOR identidad (X^0=X)');
-        if (l.type==='CONST' && l.value===false) return pushStep(before, r, 'XOR identidad (0^X=X)');
-        // X ^ 1 = ~X
-        if (r.type==='CONST' && r.value===true) return pushStep(before, NotNode(l), 'XOR con 1 (X^1=~X)');
-        if (l.type==='CONST' && l.value===true) return pushStep(before, NotNode(r), 'XOR con 1 (1^X=~X)');
-        // X ^ X = 0
-        if (toString(l) === toString(r)) return pushStep(before, ConstNode(false), 'XOR cancelacion (X^X=0)');
-        return before;
-      }
     }
   }
 
@@ -456,6 +406,7 @@ btnSimplify.addEventListener('click', () => {
     alert('Error: ' + err.message);
   }
 });
+
 // esta funcion se encarga de mostrar los pasos que se aplicaron para simplificar la expresion  
 function renderSteps(steps){
   stepsEl.innerHTML = '';
